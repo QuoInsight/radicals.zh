@@ -1,0 +1,112 @@
+<HTML>
+<HEAD>
+  <META http-equiv=Content-Type content="text/html; charset=utf-8">
+  <LINK REL=stylesheet HREF="styles.css" TYPE="text/css"/>
+  <SCRIPT LANGUAGE=JavaScript>/*make javascript as default*/</SCRIPT>
+  <SCRIPT LANGUAGE=VBScript SRC="global.vbs"></SCRIPT>
+</HEAD>
+<script>
+  var hMsgBox=null, freezed=false;
+  function msgwindow(title, msg)  {
+    hMsgBox = window.parent.chr1;
+    //the below is a pop-up; use the above IFRAME instead
+    /*
+      hMsgBox = window.parent.open("about:blank", "_about_blank", "height=100,width=460,"
+            + "titlebar=no,menubar=no,toolbar=no,location=no,status=no,"
+            + "scrollbars=yes,resizable=yes");
+    */
+    hMsgBox.document.write(
+          "<title>" + title + "</title>"
+          + "<body bgcolor=#cccccc style='overflow-x:hidden' onblur0='window.focus();'>"
+          + "<pre id=msg style='font-size:28pt'>"
+          + msg
+          + "</pre>"
+          + "<!--br><br><input type=button value=Close onclick='window.close()'-->"
+      );
+    return hMsgBox;
+  }
+  function showChar(char) {
+    if (freezed) return;
+    if (hMsgBox != null) {
+      try {
+        hMsgBox.msg.innerText = char.innerText;
+        return;
+      } catch(e) {}
+    }
+    hMsgBox = msgwindow("Character", char.innerText);
+  }
+  function openDict(char) {
+    /*
+     http://tool.httpcn.com/Zi/So.asp?Tid=1&wd=馡 ; Tid=1&wd=%E9%A6%A1 [OK] ; Tid=10&wd=99A1 [OK]
+     http://tool.httpcn.com/KangXi/So.asp?Tid=1&wd=馡
+    */
+    if (hMsgBox == null || hMsgBox.msg == undefined) {
+      hMsgBox = msgwindow("Character", "");
+    }
+    var msg = char.innerText
+      + "<font size=2>"
+      + "[<A target=_blank "
+      + " href='http://tool.httpcn.com/Zi/So.asp?Tid=1&wd=" + escape(char.innerText) + "'"
+      + ">新華</A>]";
+    msg = msg
+      + "[<A target=_blank "
+      + " href='http://tool.httpcn.com/KangXi/So.asp?Tid=1&wd=" + escape(char.innerText) + "'"
+      + ">康熙</A>]";
+    try { if (char.big5 != "") msg = msg
+      + "[<A target=_blank "
+      + " href='http://humanum.arts.cuhk.edu.hk/cgi-bin/agrep-lindict?boo=no&category=wholerecord&order=all"
+      + "&query=%" + char.big5.substr(0,2) + "%" + char.big5.substr(2,2) + "'"
+      + ">林語堂</A>]"
+      + "[<A target=_blank "
+      + " href='http://input.foruto.com/cjdict/Search_1.php?Step=DoSearch"
+      + "&Hanzi=%" + char.big5.substr(0,2) + "%" + char.big5.substr(2,2) + "'"
+      + ">倉頡</A>]";
+    } catch(e) {}
+    msg = msg
+      + "["+ char.pinyin + "]"
+      + "[<A href='char.htm?h=0&q=" + char.innerText + "'>local</A>]"
+      + "</font>";
+    hMsgBox.msg.innerHTML = msg;
+    hMsgBox.focus();
+    freezed = true;
+  }
+</script>
+<BODY style='margin:0' onload='hMsgBox=window.parent.chr1;' onunload='try{hMsgBox.close();}catch(e){}' onfocus='freezed=false;'>
+<TABLE BORDER=0 CELLSPACING=3 CELLPADDING=0 style='margin:0;padding:0;border:0'>
+ <SCRIPT RUNAT=SERVER LANGUAGE=VBScript>
+   radical = request("radical") '' "艸"
+   if radical="" then
+     response.write "<br>&nbsp; Unicode: 以部首為主、先繁後簡、筆劃為輔"
+   end if
+   set cn = connectDB()
+   cmd = "select * from characters " & _
+         " where radical='" & radical & "' " & _
+         " order by strokes, character"
+
+   cmd = "select distinct c.*, d.fMandarin as pinyin, d.fBig5 as big5 " & _
+         " from characters c left outer join data_pm d " & _
+         "  on c.character=d.fUTF8 " & _
+         " where c.radical='" & radical & "' " & _
+         " order by c.strokes, c.character"
+   set rs = runQuery(cn, cmd)
+   i = 0
+   while not rs.EOF
+     i = i + 1
+     thisStrokes = nvl(rs("strokes"),0)
+     if i > 20 or lastStrokes<>thisStrokes then
+       i = 1
+       Response.Write "<TR><TD align=right>"
+       if lastStrokes<>thisStrokes then Response.Write thisStrokes
+     end if
+     Response.Write "<TD><A style='cursor:hand;text-decoration:none;font-size:14pt' " & _
+                    " onmouseover=showChar(this) onclick=openDict(this) " & _
+                    " pinyin='" + rs("pinyin") + "' " & _
+                    " big5='" + rs("big5") + "' " & _
+                    " >" & rs("character") & "</A>"
+     lastStrokes = thisStrokes
+     rs.MoveNext
+   wend
+ </SCRIPT>
+</TABLE>
+</BODY>
+</HTML>

@@ -1,0 +1,151 @@
+<HTML>
+<HEAD>
+  <META http-equiv=Content-Type content="text/html; charset=utf-8">
+  <LINK REL=stylesheet HREF="styles.css" TYPE="text/css"/>
+  <SCRIPT LANGUAGE=JavaScript>/*make javascript as default*/</SCRIPT>
+  <SCRIPT LANGUAGE=VBScript SRC="global.vbs"></SCRIPT>
+  <SCRIPT LANGUAGE=VBScript SRC="header.vbs"></SCRIPT>
+</HEAD>
+<BODY STYLE='margin:0'>
+ <SCRIPT RUNAT=SERVER LANGUAGE=VBScript>
+   if request("h")<>"0" then
+     Call header("文字")
+     Response.Write "<p align=right style='margin:0'>"
+   else
+     Response.Write "<p align=right style='display:none'>"
+   end if
+   ''                 " A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z"
+   ''                 "日,月,金,木,水,火,土,斜,點,交,叉,縱,横,鈎,人,心,手,口,側,并,仰,紐,方,難,卜, Z"
+   ''                 "日,月,金,木,水,火,土,竹,戈,十,大,中,一,弓,人,心,手,口,尸,廿,山,女,田,難,卜, Z"
+   cangjieArr = split("日,月,金,木,水,火,土,丿,丶,十,乂,丨,一,亅,人,心,手,口,尸,廿,山,女,田,難,卜,Z",",")
+ </SCRIPT>
+
+<form method=get style='margin:0'>
+ <SCRIPT RUNAT=SERVER LANGUAGE=VBScript>
+  set cn = connectDB()
+
+  n = request("n")
+  o = request("o")
+  q = trim(request("q"))
+
+  if n<>"" then
+    if o = "" then
+      o = 0
+    else
+      o = CDbl(o)
+    end if
+
+    if o > 0 then
+      cmd = "select min(character) from characters where character > '" & n & "'"
+    else
+      cmd = "select max(character) from characters where character < '" & n & "'"
+    end if
+
+    cmd = "select character from characters where character=(" & cmd & ")"
+    set rs = runQuery(cn, cmd)
+    if not rs.EOF then 
+      q = rs(0)
+    else
+      q = ""
+    end if
+  elseif q = "" then
+    randomize
+    q = ChrW(&H4E00+CLng(rnd*20901)) '' "字"
+  end if
+
+  Response.Write "<input name='q' size=6 value='" & q & "'>"
+ </SCRIPT>
+  <input name=n value="" type=hidden>
+  <input name=o value="" type=hidden>
+  <input type=submit value="search">
+
+ <SCRIPT RUNAT=SERVER LANGUAGE=VBScript>
+  if q<>"" then
+    cmd = "select d.fUTF8 as ch, d.* " & _
+          " from data_pm d " & _
+          " where d.fUTF8=" & quote(q) & _
+          " order by d.Field6 "
+    set rs = runQuery(cn, cmd)
+    if not rs.EOF then
+      Response.Write "<input type=submit value='<' onclick=""getNextEntry('" & rs("ch") & "',-1)"">"
+      Response.Write "<input type=submit value='>' onclick=""getNextEntry('" & rs("ch") & "',1)"">"
+    end if
+  end if
+ </SCRIPT>
+</form>
+</p>
+
+<script>
+  function pts(s) {
+    window.open(
+     'http://dsal.uchicago.edu/cgi-bin/philologic/search3advanced'
+     + '?dbname=pali&searchdomain=headwords&matchtype=exact&display=utf8'
+     + '&query=' + toAsc(s, 2)
+   );
+  }
+  function getNextEntry(s, o) {
+    var form = document.forms[0];
+    //form.q.value = "";
+    form.n.value = s;
+    form.o.value = o;
+    form.submit();
+  }
+</script>
+
+ <SCRIPT RUNAT=SERVER LANGUAGE=VBScript>
+   Response.Write "<p align=right>"
+   Response.Write "<TABLE><TR><TD valign=top width=75 nowrap>"
+   Response.Write "<SPAN style='text-align:left;font-family:DFKai-SB;font-size:42'>" & q & "</SPAN>"
+   Response.Write "<font size=2><br><br>"
+   Response.Write "[ <A target=_blank " & _
+                  " href='http://tool.httpcn.com/Zi/So.asp?Tid=1&wd=" + escape(q) + "'" & _
+                  ">新華</A> ]"
+   Response.Write "<br>[ <A target=_blank " & _
+                  " href='http://dict.revised.moe.edu.tw/cbdic/search.htm' " & _
+                  ">國語辭典</A> ]"
+   Response.Write "<br>[ <A target=_blank " & _
+                  " href='http://tool.httpcn.com/KangXi/So.asp?Tid=1&wd=" + escape(q) + "'" & _
+                  ">康熙</A> ]"
+   Response.Write "<br>[ <A target=_blank " & _
+                  " href='http://vividict.com/Word.aspx?ie=utf8&wd=" + URLEncode(q) + "'" & _
+                  ">象形</A> ]"
+   Response.Write "<br>[ <A target=_blank " & _
+                  " href='http://ctext.org/dictionary.pl?if=gb&char=" + URLEncode(q) + "'" & _
+                  ">Sturgeon</A> ]"
+   Response.Write "</font>"
+   Response.Write "<TD>"
+   ''writeRsTable2 rs
+    Response.Write "<TABLE border=1 style='margin:3;border-collapse:collapse'>"
+    If (rs.BOF and rs.EOF) Then
+      Response.Write "<TD>No Data</TD>"
+      Response.Write "</TR></TABLE>"
+    Else
+      For x = 0 To (rs.Fields.Count - 1)
+        Response.Write "<TR id='tr" & x & "' name='" & rs.Fields.Item(x).Name & "' align=left><TH><font face=times size=2>" & rs.Fields.Item(x).Name & "</font></TH>"
+        If not rs.BOF then rs.MoveFirst
+        While Not rs.EOF
+          Response.write "<TD width=80>" & rs.Fields.Item(X).Value & "</TD>"
+          rs.MoveNext
+        WEnd
+      Next
+    End If
+    Response.Write "</TABLE>"
+   Response.Write "</TABLE>"
+   Response.Write "</p>"
+ </SCRIPT>
+ <script>
+   for (var i=0; i<50; i++) {
+     try {
+       var tr = document.getElementById('tr'+i);
+       if (tr==undefined) {
+         break;
+       } else if (tr.name == tr.innerText) {
+         tr.style.display = "none";
+       }
+     } catch(e) {
+     }
+   }
+ </script>
+
+</BODY>
+</HTML>

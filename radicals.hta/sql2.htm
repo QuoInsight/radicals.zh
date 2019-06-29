@@ -1,0 +1,1287 @@
+<html>
+<!--
+  All Rights Reserved
+  Copyright (C) 2005 Lai KamLeong
+-->
+<HEAD>
+  <META http-equiv=Content-Type content="text/html; charset=utf-8">
+  <TITLE>SQLTool</TITLE>
+  <LINK REL="SHORTCUT ICON" HREF="%SystemRoot%\system32\odbcad32.exe">
+  <LINK REL=stylesheet HREF="styles.css" TYPE="text/css"/>
+
+  <SCRIPT LANGUAGE="JavaScript">/*make javascript as default*/</SCRIPT>
+  <SCRIPT LANGUAGE=JavaScript>/*make javascript as default*/</SCRIPT>
+  <SCRIPT LANGUAGE=VBScript SRC="global.vbs"></SCRIPT>
+  <SCRIPT LANGUAGE=VBScript SRC="header.vbs"></SCRIPT>
+
+  <OBJECT className="Shell.Application" ID="oShell"
+      CLASSID="clsid:13709620-C279-11CE-A49E-444553540000">
+  </OBJECT>
+  <OBJECT className="ADODB.Recordset" ID="adoRs"
+      CLASSID="clsid:00000535-0000-0010-8000-00AA006D2EA4">
+  </OBJECT>
+
+  <SCRIPT LANGUAGE="VBScript">
+  <!--
+
+    Function connectDB2
+      if ( isObj(session("cn2")) ) then
+        set connectDB2 = session("cn2")
+        exit function
+      end if
+
+      Dim cn, connstr
+      set cn = CreateObject("ADODB.Connection")
+
+      connstr="Provider=Microsoft.Jet.OLEDB.4.0;" & _
+        "Data Source=""" & MapPath("../../") & "/cdp/cdphanzi/cdphanzi.mdb"""
+
+      cn.Open connstr
+      set session("cn2") = cn
+      set connectDB2 = cn
+    End Function
+
+    function isObj(obj)
+      if (not IsObject(obj)) then    '' (typeof(obj) != "object")
+        isObj = false
+        exit function
+      elseif (obj Is Nothing) then   '' (obj == null)
+        isObj = false
+        exit function
+      end if
+      isObj = true                   '' isNotNullObj
+    end function
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    Dim argc, argv(), path, ProcEnv
+
+    sub Window_onLoad
+      ''msgbox "Window_onLoad"
+
+      set datatypeRef = initializeDataTypeDict()
+    end sub
+
+    function getAppRootDir(ByVal appPath)
+      if instr(appPath, """")=1 then
+       Dim pos
+       pos=Instr(2,appPath,"""")
+       appPath = Mid(appPath, 2, pos)
+      end if
+      pos = InStrRev(appPath, "\")-1
+      if pos > 0 then appPath = Left(appPath, pos)
+      getAppRootDir = appPath
+    end function
+
+    Dim cn, rs, datatypeRef
+    set rs = document.all.adoRs
+
+    'sub Init '' <body onload="vbscript:init">
+      'Window.MoveTo 10,100
+      'Window.ReSizeTo 720,425
+      'document.Title=FileName & " - " & oHTA.ApplicationName
+    'end sub
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    Function keypressed()
+      Dim selectedText
+      select case window.event.keycode
+       case  17: '' Shift[16] Ctrl[17] Alt[18]
+       case  27: '' Esc[27]
+         hideMenu
+         if confirm("Disconnect") then disconnectDB(cn)
+         window.event.ReturnValue= False
+       case  80: '' a[65] .. f[70]..k[75]..p[80]..u[85].. z[90]
+         if (window.event.ctrlKey) then
+           alert "ctrl-p"
+           window.event.ReturnValue= False
+         end if
+       case  82: '' ctrl-r
+         if (window.event.ctrlKey) then
+           disconnectDB cn
+           set cn = connectDB2()
+           window.event.ReturnValue= False
+         end if
+       case 112: '' F1[112] .. F5[116] .. F12[123]
+         msgwindow "Help", document.all.help.innerHTML
+         ''CreateObject("MSComDlg.CommonDialog").AboutBox
+         window.event.ReturnValue= False
+       case 113: '' F2[113]
+         if isObj(cn) and TypeName(cn)="Connection" then
+          if cn.Properties("Transaction DDL") > 0 then
+            cn.CommitTrans
+            alert " Commited "
+            cn.BeginTrans
+          end if
+         end if
+         window.event.ReturnValue= False
+       case 114: '' F3[114]
+         file_Open
+         window.event.ReturnValue= False
+       case 115: '' F4[115]
+         if isObj(cn) and TypeName(cn)="Connection" then
+          if cn.Properties("Transaction DDL") > 0 then
+            cn.RollbackTrans
+            alert " Rolled back "
+            cn.BeginTrans
+          end if
+         end if
+         window.event.ReturnValue= False
+       case 116: '' F5[116]
+         executeF5
+         window.event.ReturnValue= False
+       case 123: '' F12[123]
+         sqltxt = document.selection.createRange().text
+         if (sqltxt="") then
+           set rs = getCatalogRs
+         else
+           set rs = runQuery("desc " & sqltxt)
+         end if
+         dumpRs rs
+         window.event.ReturnValue= False
+       case else:
+         'alert window.event.keycode
+         'window.event.ReturnValue= False
+      end select
+    End Function 
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    function runcmdln(sCmdln, bWait)
+      ''oShell.ShellExecute sCmdln
+      'WshShell.Run sCmdln, 1, bWait
+      runcmdln = false
+    end function
+
+    function createUDL()
+      Dim udl, pvd, dsn, uid, psw, cns, txtUDL
+      udl = "B:\adosql.udl"
+      pvd = document.all.pvd.value
+      dsn = trim(document.all.dsn.value)
+      uid = trim(document.all.uid.value)
+      psw = trim(document.all.psw.value)
+      cns = getConnectionString(pvd, dsn, uid, psw)
+      txtUDL = "[oledb]" & vbCrLf & _
+               "; Everything after this line is an OLE DB initstring" & vbCrLf & _
+               cns & vbCrLf
+      saveUnicodeFile udl, txtUDL, true
+      alert "Done. [" & udl & "]"
+      runcmdln "explorer B:\", false
+    end function
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+  Dim connectmodeDict
+  set connectmodeDict = CreateObject("Scripting.Dictionary")
+    connectmodeDict("0") = "adModeUnknown"
+    connectmodeDict("1") = "adModeRead"
+    connectmodeDict("2") = "adModeWrite"
+    connectmodeDict("3") = "adModeReadWrite"
+
+  function disconnectDB(cn)
+   on error resume next
+    if not (isObj(cn) and TypeName(cn)="Connection") then
+      exit function
+    elseif cn.state<>0 then
+      if cn.Properties("Transaction DDL") > 0 then
+        if msgbox("Commit changes ?", 32+4, "disconnectDB")=6 then
+          cn.CommitTrans
+          if err.number <> 0 then
+            alert "Failed to commit."
+            err.Clear
+          end if
+        else
+          cn.RollbackTrans
+          if err.number <> 0 then
+            alert "Failed to rollback."
+            err.Clear
+          end if
+        end if
+      end if
+      cn.close
+    end if
+    sql.style.color = "#666666" : sql.style.borderStyle = "none"
+  end function
+
+  function reconnectDB
+    disconnectDB cn
+    set cn = connectDB2()
+  end function
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    function getConnInfoRs
+      Dim x
+      On Error Resume Next
+      if not (isObj(cn) and TypeName(cn)="Connection") then
+        alert "getConnInfoRs: ADO Connection not initialized!"
+        set getConnInfoRs = Nothing
+        exit function
+      else
+        x = cn.Properties.Count
+        if err.Number<>0 then
+          alert "Err# " & err.Number & ": " & err.Description
+        else
+          set getConnInfoRs = oCollection2rs(cn.Properties)
+        end if
+      end if
+      On Error Goto 0
+    end function
+
+    function getCatalogRs
+      Dim ct, ctDict, obj, rs
+      On Error Resume Next
+      if not (isObj(cn) and TypeName(cn)="Connection") then
+        alert "getCatalogRs: ADO Connection not initialized!"
+        set getCatalogRs = nothing
+        exit function
+      elseif cn.State<>1 then
+        alert "ADO Connection not active!"
+        set getCatalogRs = nothing
+        exit function
+      elseif cn.Properties("DBMS Name") = "Oracle" then
+        set rs = runQuery("select * from cat")
+      else
+        set ct = CreateObject("ADOX.Catalog")
+        set ctDict = CreateObject("Scripting.Dictionary")
+        set ct.ActiveConnection = cn
+        For Each obj In ct.Tables
+          if not( obj.Type="ACCESS TABLE" or obj.Type="SYSTEM TABLE" ) then
+            ctDict(obj.Name) = obj.Type
+          end if
+        Next
+        'For Each obj In ct.Views
+        '  ctDict(obj.Name) = "VIEW"
+        'Next
+        set rs = nCollection2rs(ctDict)
+      end if
+      set getCatalogRs = rs
+      On Error Goto 0
+    end function
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    function getSchemaRs(cn, tableName)
+      set getschemaRs = cn.OpenSchema(4, Array(Empty, Empty, tableName)) ''adSchemaColumns = 4
+    end function
+
+    function getCatalogDDL(cn, datatypeRef, ByVal tableName, ByVal newSuffix)
+      Dim ct, tb, cl, c, rs, sql
+      set ct = CreateObject("ADOX.Catalog")
+      set ct.ActiveConnection = cn
+
+      On Error Resume Next
+        set tb = ct.Tables(tableName)
+        if err.Number<>0 then
+          alert "Failed to get catalog info for [" & tableName & "]" & vbCrLf & _
+                "Err# " & err.Number & ": " & err.Description
+          exit function
+        end if
+      On Error Goto 0
+
+      if tb.Type = "VIEW" then
+        sql = "CREATE VIEW " & tableName & " AS " & vbCrLf
+        On Error Resume Next
+          sql = sql & ct.Views(tableName).Command.CommandText & vbCrLf
+          if err.Number<>0 then
+            sql = sql & "Err# " & err.Number & ": " & err.Description & vbCrLf & vbCrLf
+          end if
+        On Error Goto 0
+      elseif tb.Type <> "TABLE" then
+        sql = "CREATE " & tb.Type & " " & tableName & " AS ?? " & vbCrLf & vbCrLf
+      end if
+
+      sql = sql & "CREATE TABLE " & tableName & " ( " & vbCrLf
+      if tb.Columns.Count > 0 then
+        set cl = tb.Columns
+      else
+        set rs = CreateObject("ADODB.RecordSet")
+        rs.CursorLocation = 3 '' adUseClient
+        rs.MaxRecords = 100
+        rs.Open "select * from " & tableName, cn, 3, 1
+        set cl = rs.Fields
+      end if
+
+      for each c in cl
+        sql = sql & "  " & c.Name
+        if datatypeRef.Exists(c.Type & "") then
+          sql = sql & " " & datatypeRef(c.Type & "")
+        else
+          sql = sql & " [" & c.Type & "]"
+        end if
+        thisDim = c.DefinedSize & "," & c.Precision & "," & c.NumericScale
+          thisDim = replace(thisDim,",,","")
+          thisDim = replace(thisDim,",0,0","")
+          thisDim = replace(thisDim,",255,255","")
+          if instr(thisDim, ",")=1 then thisDim = replace(thisDim,",","",1,1)
+          if thisDim<>"" AND instrRev(thisDim, ",")=len(thisDim) then thisDim = left(thisDim,len(thisDim)-1)
+        if thisDim<>"" and thisDim<>"0" then sql = sql & "(" & thisDim & ")"
+
+        ''if not(c.Attributes=2 or (isobj(rs) and (c.Attributes and &H20)<>&H20)) then sql = sql & " NOT NULL"
+        if isobj(rs) and TypeName(rs)="Recordset" then
+          if (c.Attributes and &H20)<>&H20 then sql = sql & " NOT NULL"
+        else
+          if (c.Attributes and 2)<>2 then sql = sql & " NOT NULL"
+        end if 
+        sql = sql & "," & vbCrLf
+      next
+
+      sql = left(sql, len(sql)-3)
+      sql = sql & vbCrLf & ")"
+
+      getCatalogDDL = sql
+    end function
+
+    function getSchemaDDL(cn, datatypeRef, ByVal tableName, ByVal newSuffix)
+      Dim schemaRs, sql
+      set schemaRs = cn.OpenSchema(4, Array(Empty, Empty, tableName)) ''adSchemaColumns = 4
+
+      if schemaRs.EOF then
+        alert "Failed to load schema for [" & tableName & "]"
+        exit function
+      end if
+
+      sql = sql & "CREATE TABLE " & tableName & " ( " & vbCrLf
+      while not schemaRs.EOF
+        sql = sql & "  " & schemaRs("COLUMN_NAME")
+
+        if datatypeRef.Exists(schemaRs("DATA_TYPE") & "") then
+          sql = sql & " " & datatypeRef(schemaRs("DATA_TYPE") & "")
+        else
+          sql = sql & " [" & schemaRs("DATA_TYPE") & "]"
+        end if
+        thisDim = schemaRs("CHARACTER_MAXIMUM_LENGTH") & "," & _
+                  schemaRs("NUMERIC_PRECISION") & "," & _
+                  schemaRs("NUMERIC_SCALE")
+        thisDim = replace(thisDim,",,","")
+         if instr(thisDim, ",") = 1 then thisDim = replace(thisDim,",","",1,1)
+         if thisDim<>"" AND instrRev(thisDim, ",") = len(thisDim)  then thisDim = left(thisDim,len(thisDim)-1)
+        if thisDim<> "" then sql = sql & "(" & thisDim & ")"
+        if not schemaRs("IS_NULLABLE") then sql = sql & " NOT NULL"
+
+        schemaRs.MoveNext
+        if not schemaRs.EOF then sql = sql & "," & vbCrLf
+      wend
+      sql = sql & vbCrLf & ")"
+
+      schemaRs.close
+      getSchemaDDL = sql
+    end function
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    function initializeDataTypeDict()
+      Dim refDict
+      set refDict = CreateObject("Scripting.Dictionary")
+
+      refDict("-1")  = "NUMBER" '' ??
+
+      refDict("0")   = "Empty"
+      refDict("16")  = "TinyInt"
+      refDict("2")   = "SmallInt"
+      refDict("3")   = "Integer"
+      refDict("20")  = "BigInt"
+      refDict("17")  = "UnsignedTinyInt"
+      refDict("18")  = "UnsignedSmallInt"
+      refDict("19")  = "UnsignedInt"
+      refDict("21")  = "UnsignedBigInt"
+      refDict("4")   = "Single"
+      refDict("5")   = "Double"
+      refDict("6")   = "Currency"
+      refDict("14")  = "Decimal"
+      refDict("131") = "Numeric"
+      refDict("11")  = "Boolean"
+      refDict("10")  = "Error"
+      refDict("132") = "UserDefined"
+      refDict("12")  = "Variant"
+      refDict("9")   = "IDispatch"
+      refDict("13")  = "IUnknown"
+      refDict("72")  = "GUID"
+      refDict("7")   = "Date"
+      refDict("133") = "DBDate"
+      refDict("134") = "DBTime"
+      refDict("135") = "DBTimeStamp"
+       ''Oracle
+      refDict("135") = "DATE"
+      refDict("8")   = "BSTR"
+      refDict("129") = "VarChar2" ''' "Char"
+      refDict("200") = "VarChar"
+      refDict("201") = "LongVarChar"
+      refDict("130") = "WChar"
+      refDict("202") = "VarWChar"
+      refDict("203") = "LongVarWChar"
+      refDict("128") = "Binary"
+      refDict("204") = "VarBinary"
+      refDict("205") = "LongVarBinary"
+      refDict("136") = "Chapter"
+      refDict("64")  = "FileTime"
+      refDict("138") = "PropVariant"
+      refDict("139") = "VarNumeric"
+       ''Oracle
+       refDict("139") = "NUMBER"
+      refDict("8192") = "Array"
+
+      set initializeDataTypeDict = refDict
+    end function
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    function getOraDbmsOutput(cn, plsql)
+      Const buffer_size  = 20000  '' max=1000000 min=2000 dflt=20000 [ORA-20000: ORU-10027: buffer overflow, limit of 20000 bytes]
+      Dim plsql2, adocmd
+
+      if not (isObj(cn) and TypeName(cn)="Connection") then
+        alert "getOraDbmsOutput: Database connection not initialized!"
+        exit function
+      elseif cn.State <> 1 then
+        alert "getOraDbmsOutput: Database connection not ready!"
+        exit function
+      elseif not ( instr(1, cn.Provider, "OraOLEDB.Oracle", 1)=1 or instr(1, cn.Provider, "MSDAORA", 1)=1) then
+        alert "getOraDbmsOutput: Not supported!"
+        exit function
+      end if
+
+      ' /*
+      '  if we have at least one bind variable in the PL/SQL block
+      '  when using MSDAORA, we must start with "BEGIN ..." instead of "DECLARE ..."
+      '  that will avoid Err: Microsoft OLE DB Provider for Oracle: ORA-01008: not all variables bound
+      ' */
+      plsql2 = "BEGIN " & vbLf & _
+               " EXECUTE IMMEDIATE 'ALTER SESSION SET NLS_DATE_FORMAT=""DD-MON-YYYY HH24:MI:SS""'; " & vbLf & _
+               " Dbms_Output.Enable(" & buffer_size & "); " & vbLf & _
+               " DECLARE " & vbLf & _
+               "  procedure DumpDbmsOutput(p_buffer out long) as " & vbLf & _
+               "   l_line varchar2(255); " & vbLf & _
+               "   l_endbuf number:=0; " & vbLf & _
+               "   l_buffer long; /*max=32760*/ " & vbLf & _
+               "   i number:=0; " & vbLf & _
+               "  begin " & vbLf & _
+               "   while l_endbuf<>1 loop " & vbLf & _
+               "    /*exit when length(l_buffer)+255 > 32767;*/ " & vbLf & _
+               "    dbms_output.get_line(l_line, l_endbuf); " & vbLf & _
+               "    i := i + 1; " & vbLf & _
+               "    /* l_buffer := l_buffer || i || ': ' || l_line || chr(10); */ " & vbLf & _
+               "    l_buffer := l_buffer || l_line || chr(10); " & vbLf & _
+               "   end loop; " & vbLf & _
+               "   p_buffer := l_buffer; " & vbLf & _
+               "  end ; " & vbLf & _
+               " BEGIN " & vbLf & _
+               " /*--Start of actual codes--*/ " & vbLf & _
+                 plsql & vbLf & _
+               " /*--End of actual codes----*/ " & vbLf & _
+               "  DumpDbmsOutput(?); " & vbLf & _
+               " END; " & vbLf & _
+               "END;"
+
+      set adocmd = CreateObject("ADODB.Command")
+        adocmd.ActiveConnection = cn
+        adocmd.CommandType = 1 '' adCmdText 
+        adocmd.CommandText = plsql2
+        adocmd.Parameters.Append adocmd.CreateParameter("", 200, 2, buffer_size)
+
+      On Error Resume Next
+      set rs = adocmd.Execute
+      if err.number<>0 then
+        getOraDbmsOutput = "getOraDbmsOutput Err#" & err.Number & ": " & err.Description
+      else
+        getOraDbmsOutput = adocmd(adocmd.Parameters.Count-1)
+      end if
+    end function
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    function linkAccessODBC(sourceDB, tableName, remoteName, remoteODBC)
+      Const dbAttachSavePWD = 131072
+      Dim objAccess, db, tdf, errMsg
+      Set objAccess = CreateObject("Access.Application")
+      objAccess.OpenCurrentDatabase sourceDB
+      set db = objAccess.CurrentDb
+      Set tdf = db.CreateTableDef(tableName, _
+            dbAttachSavePWD, remoteName, "ODBC;" & remoteODBC)
+      On Error Resume Next
+        db.TableDefs.Append tdf
+        if err.number=0 then
+          Set tdf = db.TableDefs(tableName)
+          tdf.RefreshLink
+          Set tdf = Nothing
+          errMsg = ""
+        elseif err.number=3010 then
+          if confirm("Err#" & err.Number & ": " & err.Description & _
+               vbCrLf & "Replace link ?") then
+            Err.Clear
+            db.TableDefs.Delete tableName
+            db.TableDefs.Append tdf
+            if err.number=0 then
+              Set tdf = db.TableDefs(tableName)
+              tdf.RefreshLink
+              errMsg = ""
+            else
+              errMsg = "Err#" & err.Number & ": " & err.Description
+            end if
+            Set tdf = Nothing
+          else
+            errMsg = ""
+          end if
+        else
+          errMsg = "Err#" & err.Number & ": " & err.Description
+        end if
+        objAccess.Visible = false
+        if errMsg = "" then
+          objAccess.Quit 0 '' acSaveYes
+          linkAccessODBC = "OK"
+        else
+          objAccess.Quit 2 '' acQuitSaveNone
+          linkAccessODBC = errMsg
+        end if
+        Set objAccess = Nothing
+      On Error Goto 0
+    end function
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    function rs2xls(rs, filename)
+      Dim cs, tb, cl, ct, x, rx
+      if not (isObj(rs) and TypeName(rs)="Recordset") then
+        alert "Invalid Recordset!"
+        exit function
+      elseif rs.state<>1 then
+        alert "Recordset not open!"
+        exit function
+      elseif not rs.BOF then
+        rs.MoveFirst
+      end if
+  
+      cs = "Provider=Microsoft.Jet.OLEDB.4.0;" & _
+           "Data Source=" & filename & ";" & _
+           "Extended Properties=Excel 8.0"
+      set ct = CreateObject("ADOX.Catalog")
+      ct.ActiveConnection = cs
+  
+      set tb = CreateObject("ADOX.Table")
+      tb.Name = "ADOX_Table"
+      For x = 0 To (rs.Fields.Count - 1)
+        set cl = CreateObject("ADOX.Column")
+          cl.Name = rs.Fields.Item(x).Name
+          cl.Type = 203 '' memo 
+          ''cl.Type = rs.Fields.Item(x).Type
+          ''cl.DefinedSize = rs.Fields.Item(x).DefinedSize
+        tb.Columns.Append cl
+      next
+      ct.Tables.Append tb
+  
+      Set rx = CreateObject("ADODB.Recordset")
+      rx.Open tb.Name, ct.ActiveConnection, 3, 3, 2 '' adOpenStatic, adLockOptimistic, adCmdTable
+      'rx.BeginTrans
+      while not rs.EOF
+        rx.AddNew
+        For x = 0 To (rs.Fields.Count - 1)
+          rx(x) = rs(x)
+          ''rx(x) = left(CStr(rs(x)), rx(x).DefinedSize)
+        Next
+        rx.Update
+        rs.MoveNext
+      Wend
+      'rx.CommitTrans
+      rx.Close
+  
+      set rx = nothing
+      set cl = nothing
+      set tb = nothing
+      set ct = nothing
+    end function
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    function array2rs(arr)
+      Dim rs, x
+      set rs = CreateObject("ADODB.Recordset")
+        rs.Fields.Append "Value", 200, 1024, 32  ' adVarchar = 200 : adFldIsNullable = 32
+        rs.CursorType = 1 ' adOpenKeySet = 1  
+      rs.Open
+      For each x in arr
+        rs.AddNew
+        rs(0) = x
+      Next
+      if not rs.BOF then rs.MoveFirst
+      set array2rs = rs
+    end function
+
+    function dictionary2rs(dict)
+      set dictionary2rs = nCollection2rs(dict)
+      exit function
+      '' ---- ----- ''
+      Dim rs, x
+      set rs = CreateObject("ADODB.Recordset")
+        rs.Fields.Append "Name", 200, 1024, 32  ' adVarchar = 200 : adFldIsNullable = 32
+        rs.Fields.Append "Value", 200, 1024, 32  ' adVarchar = 200 : adFldIsNullable = 32
+        rs.CursorType = 1 ' adOpenKeySet = 1  
+      rs.Open
+      For each x in dict.Keys
+        rs.AddNew
+        rs(0) = x
+        rs(1) = dict.Item(x)
+      Next
+      if not rs.BOF then rs.MoveFirst
+      set dictionary2rs = rs
+    end function
+
+    function nCollection2rs(nCollection)
+      Dim rs, x
+      set rs = CreateObject("ADODB.Recordset")
+        rs.Fields.Append "Name", 200, 1024, 32  ' adVarchar = 200 : adFldIsNullable = 32
+        rs.Fields.Append "Value", 200, 1024, 32  ' adVarchar = 200 : adFldIsNullable = 32
+        rs.CursorType = 1 ' adOpenKeySet = 1  
+      rs.Open
+      On Error Resume Next
+      For each x in nCollection
+        rs.AddNew
+        rs(0) = x
+        rs(1) = nCollection(x)
+      Next
+      On Error Goto 0
+      rs.Sort = "Name"
+      if not rs.BOF then rs.MoveFirst
+      set nCollection2rs = rs
+    end function
+
+    function oCollection2rs(oCollection)
+      Dim rs, x
+      set rs = CreateObject("ADODB.Recordset")
+        rs.Fields.Append "Name", 200, 1024, 32  ' adVarchar = 200 : adFldIsNullable = 32
+        rs.Fields.Append "Value", 200, 1024, 32  ' adVarchar = 200 : adFldIsNullable = 32
+        rs.CursorType = 1 ' adOpenKeySet = 1  
+      rs.Open
+      For x = 0 To oCollection.Count - 1
+        rs.AddNew
+        rs(0) = oCollection.Item(x).Name
+        rs(1) = oCollection.Item(x).Value
+      Next
+      rs.Sort = "Name"
+      if not rs.BOF then rs.MoveFirst
+      set oCollection2rs = rs
+    end function
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    Dim useGrid, autoFit
+    useGrid = true  :  autoFit = true
+
+    function switchOutput
+      if not isobj(result_grid) then
+        useGrid = false
+        exit function
+      else
+        useGrid = not(useGrid)
+        if useGrid then
+          result_div.style.display = "none"
+          result_grid.style.display = "block"
+        else
+          result_div.style.display = "block"
+          result_grid.style.display = "none"
+        end if
+        dumpRs rs
+      end if
+    end function
+
+    function switchAutoFit
+      if not isobj(result_grid) then
+        useGrid = false
+        autoFit = false
+        exit function
+      elseif autoFit then
+        autoFit = false
+        'result_grid.DisplayColumnHeadings = True
+        result_grid.Columns("A:Z").ColumnWidth = 8.43
+      else
+        autoFit = true
+        'result_grid.DisplayColumnHeadings = False
+        result_grid.Columns("A:Z").AutoFit
+      end if
+    end function
+
+    function resizeGrid
+      if not (useGrid and isobj(result_grid)) then
+        exit function
+      end if
+
+      Dim gridHeight : gridHeight = 0
+      On Error Resume Next
+        gridHeight = document.body.clientHeight - 5 - CLng(replace(result_grid.style.top, "px", ""))
+      On Error Goto 0
+      if gridHeight > 0 then
+        result_grid.MaxHeight = gridHeight
+      else
+        result_grid.MaxHeight = 1
+      end if
+
+      result_grid.AutoFit = true
+    end function
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    function dumpRs2SpreadSheet(ss, rs)
+      Dim i, x
+
+      if not rs.BOF then rs.MoveFirst
+      if rs.EOF then
+        ss.Cells(1,1).Value = "No Data"
+        exit function
+      end if
+
+      'ss.Range("A2").Activate
+      'ss.ActiveWindow.FreezePanes = True
+      ''ss.style.visibility = "hidden" : ss.style.display = "none"
+
+      'i = 1
+      'ss.Rows("1:1").Font.Bold = True  ''ss.Cells(i,1).EntireRow.Font.Bold = True
+      'For x = 0 To (rs.Fields.Count - 1)
+      '  ss.Cells(i,x+1).Formula = rs.Fields.Item(x).Name
+      'Next
+
+      i = 0
+      For x = 0 To (rs.Fields.Count - 1)
+        ss.ActiveWindow.ColumnHeadings(x+1).caption = rs.Fields.Item(x).Name
+      Next
+      For x = x To 25
+        ss.ActiveWindow.ColumnHeadings(x+1).caption = String(15," ")
+      Next
+
+      While Not rs.EOF
+        i = i + 1
+        For X = 0 To (rs.Fields.Count - 1)
+          select case rs.Fields.Item(x).Type
+           case 129,130, 200,201,202,203:
+             ss.Cells(i,x+1).NumberFormat = "@" '' Text
+           case 7,64, 133,134,135:
+             ss.Cells(i,x+1).NumberFormat = "dd-mmm-yy hh:mm:ss" '' Date
+           case else:
+             ss.Cells(i,x+1).NumberFormat = ""  '' General
+          end select
+          ss.Cells(i,x+1).Value = rs.Fields.Item(x).Value
+        Next
+        rs.MoveNext
+      WEnd
+      ''ss.style.visibility = "" : ss.style.display = ""
+      if autoFit then ss.Columns("A:Z").AutoFit
+
+      dumpRs2SpreadSheet = i 
+    end function
+
+    function dumpRs(rs)
+      if not (isObj(rs) and TypeName(rs)="Recordset") then
+        'alert "Recordset is invalid"
+      elseif rs.State<>1 then
+        'alert "Recordset is not open"
+      elseif isobj(result_grid) and TypeName(result_grid)="HTMLObjectElement" and useGrid _
+       and rs.Fields.Item(0).Name<>"." then
+        result_header.innerHTML = "updated @ " & lcase(time())
+        result_grid.Cells.ClearContents
+        dumpRs2SpreadSheet result_grid, rs
+        result_grid.style.display = "block"
+        result_div.style.display = "none"
+      else
+        result_header.innerHTML = "updated @ " & lcase(time())
+        if rs.Fields.Item(0).Name="." and rs.RecordCount=1 then
+          result_div.innerHTML = "<PRE class=textbox style='width:100%;height:100%'>" & _
+            rs(0) & "</PRE>"
+        else
+          result_div.innerHTML = getRstable(rs)
+        end if
+        if isobj(result_grid) then result_grid.style.display = "none"
+        result_div.style.display = "block"
+      end if
+    end function
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    function getRsTable(rs)
+      Dim x, i, htmltab
+      htmltab = "<TABLE class=table1 width=100% border=1 style='border-collapse: collapse'><TR>" & vbLf
+      On Error Resume Next
+      if not rs.BOF then rs.MoveFirst
+      if (rs.BOF and rs.EOF) then
+        select case err.Number
+          case    0:
+            htmltab = htmltab & "<TD>No Data</TD>" & vbLf
+          case 3704:
+            htmltab = htmltab & "<TD>Recordset Closed</TD>" & vbLf
+          case else:
+            htmltab = htmltab & "<TD>" & Err.Number & ": " & Err.Description & "</TD>" & vbLf
+        end select
+        htmltab = htmltab & "</TR></TABLE>" & vbLf
+        getRstable = htmltab
+        exit function
+      end if
+      On Error Goto 0
+
+      htmltab = htmltab & "<TH>&nbsp;</TH>" & vbLf
+      For x = 0 To (rs.Fields.Count - 1)
+        htmltab = htmltab & "<TH>" & rs.Fields.Item(x).Name & "</TH>" & vbLf
+      Next
+      htmltab = htmltab & "</TR>"
+
+      While Not rs.EOF
+        htmltab = htmltab & "<TR>"
+        i = i + 1
+        htmltab = htmltab & "<TD>" & i & "</TD>" & vbLf
+        For X = 0 To (rs.Fields.Count - 1)
+          htmltab = htmltab & "<TD>" & rs.Fields.Item(X).Value & "</TD>" & vbLf
+        Next
+        rs.MoveNext
+        htmltab = htmltab & "</TR>" & vbLf
+      WEnd
+
+      htmltab = htmltab & "</TABLE>" & vbLf
+      getRstable = htmltab
+    end function
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    function runQuery(sql)
+      sql = trim("" & sql)
+      if sql="" then
+        set runQuery = Nothing
+        exit function
+      elseif instr(sql,"!") = 1 then
+        oShell.ShellExecute right(sql, len(sql)-1)
+        set runQuery = Nothing
+        exit function
+      elseif cn.Properties("DBMS Name")<>"Oracle" _
+        and lcase(sql)="select * from cat" _
+      then
+        sql = ""
+        set runQuery = getCatalogRs()
+        exit function
+      end if
+
+      On Error Resume Next
+        hMsgWind = msgwindow("processing ... ", clock.innerHTML & _
+          " <span style='background-color:yellow'>&nbsp; &nbsp; querying .... &nbsp; &nbsp; </span>")
+        window.setTimeout "hMsgBox.close();", 100
+      On Error Goto 0
+
+      if not (isObj(cn) and TypeName(cn)="Connection") then
+        alert "runQuery: Database connection not initialized!"
+        set runQuery = Nothing
+        exit function
+      elseif cn.State <> 1 then
+        alert "runQuery: Database connection not ready!"
+        set runQuery = Nothing
+        exit function
+      end if
+
+      if UCase(sql)="LISTCATALOG" then
+        set runQuery = getCatalogRs
+        exit function
+      end if
+
+      ''set runQuery = cn.Execute(sql)
+      ''exit function
+
+      Dim rs, rs2, RecordsAffected
+      Dim tmpArr, tableName
+
+      set rs = CreateObject("ADODB.Recordset")
+      sql = trim(sql)
+      if instr(1,sql,"TYPE",1) = 1 then
+        sql = replace(sql, "  ", "")
+        tmpArr = split(sql, " ")
+        tableName = ucase(tmpArr(ubound(tmpArr)))
+        set rs = getSchemaRs(cn, tableName)
+      elseif instr(1,sql,"DESC",1) = 1 then
+        sql = replace(sql, "  ", "")
+        tmpArr = split(sql, " ")
+        tableName = ucase(tmpArr(ubound(tmpArr)))
+        sqlstatement = getCatalogDDL(cn, datatypeRef, tableName, "")
+        rs.Fields.Append ".", 12  :  rs.open  :  rs.AddNew
+        rs(0) = sqlstatement '' replace(sqlstatement, vbCrLf, "<br>" & vbCrLf)
+      elseif ( instr(1,sql,"LINK",1) = 1 or instr(1,sql,"CREATE SYNONYM",1) = 1 ) _
+        and instr(1, cn.Provider, "Microsoft.Jet.OLEDB", 1) = 1 _
+      then
+        '' CREATE SYNONYM _apps_role FOR cfs.apps_role@(cfs/cfs@10.228.128.2:1521:motpg1)
+        '' LINK _dual TO sys.dual@FILEDSN=D:\admint~1\sql\_udl\Ora.dsn
+        '' LINK _dual TO sys.dual@10.228.128.2:1521:motpg1:cfs:cfs
+        sql = replace(sql, "CREATE SYNONYM", "LINK")
+        sql = replace(sql, vbCrLf, " ")
+        sql = replace(sql, vbLf, " ")
+        sql = replace(sql, "  ", "")
+        tmpArr = split(sql, " ")
+        if ubound(tmpArr) < 3 then
+          alert "Invalid command syntax"
+        else
+          tmpArr(2) = ucase(tmpArr(2))
+          if not (tmpArr(2)="FOR" or tmpArr(2)="TO") _
+          then
+            alert "Invalid command syntax (FOR/TO expected)"
+          else
+            sourceDB = cn.Properties("Data Source")
+            tableName = ucase(tmpArr(1))
+            remoteName = tmpArr(3)
+            tmpArr = split(remoteName, "@")
+            remoteName = tmpArr(0)
+            if ubound(tmpArr) >= 1 then remoteODBC = tmpArr(1)
+            tmpArr = split(remoteODBC, ":")
+            if ubound(tmpArr)=4 then
+              remoteODBC = "Driver={Microsoft ODBC for Oracle};" & _
+                           "Server=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)" & _
+                           "(HOST=" & tmpArr(0) & ")(PORT=" & tmpArr(1) & "))" & _
+                           "(CONNECT_DATA=(SID=" & tmpArr(2) & ")));" & _
+                           "uid=" & tmpArr(3) & ";pwd=" & tmpArr(4) & ";" 
+              ''alert "Invalid remoteODBC spec"
+            end if
+            alert linkAccessODBC(sourceDB, tableName, remoteName, remoteODBC)
+            rs.Fields.Append ".", 12  :  rs.open  :  rs.AddNew
+            rs(0) = sourceDB & vbTab & tableName & vbTab & _
+                    remoteName & vbTab & remoteODBC & vbCrLf & _
+                    getCatalogDDL(cn, datatypeRef, tableName, "")
+          end if
+        end if
+      else
+        On Error Resume Next
+        if instr(1,sql,"SELECT",1)=1 or instr(sql," ")=0 then
+          rs.CursorLocation = 3 '' adUseClient
+          rs.MaxRecords = 100
+          rs.Open sql, cn, 3, 1
+        elseif ( instr(1, cn.Provider, "OraOLEDB.Oracle", 1)=1 or instr(1, cn.Provider, "MSDAORA", 1)=1 ) _
+          and ( instr(1, sql, "declare", 1)=1 or instr(1, sql, "begin", 1)=1 ) _
+        then
+          set rs = nothing
+          set rs = CreateObject("ADODB.Recordset")
+          rs.Fields.Append ".", 12  :  rs.open  :  rs.AddNew
+          rs(0) = getOraDbmsOutput(cn, sql)
+        else
+          RecordsAffected = -1
+          set rs = cn.Execute(sql, RecordsAffected)
+        end if
+
+        if err.Number <> 0 then
+          alert "Err#" & err.Number & " : " & err.Description
+        elseif rs.state<>1 then
+          set rs2 = CreateObject("ADODB.Recordset")
+          ''rs2.Fields.Append string(80,"-"), 12
+          rs2.Fields.Append ".", 12  :  rs2.open  :  rs2.AddNew
+          if RecordsAffected = -1 then
+            rs2(0) = "No recordset returned from the last SQL command"
+          else
+            rs2(0) = RecordsAffected & " record(s) affected"
+          end if
+          set rs = nothing
+          set rs = rs2
+        elseif rs.recordcount = rs.MaxRecords then
+          alert "rs.MaxRecords = "  & rs.MaxRecords
+        end if 
+        On Error Goto 0
+      end if
+      set runQuery = rs
+    end function
+
+  ''-->
+  </SCRIPT>
+
+  <!--  ===========================================================  -->
+
+  <script language=javascript>
+  <!--
+    var hMsgBox;
+    function msgwindow(title, msg)  {
+      if (hMsgBox != null) hMsgBox.close();
+      hMsgBox = window.open("about:blank", "_about_blank", "height=100,width=460,"
+            + "titlebar=no,menubar=no,toolbar=no,location=no,status=no,"
+            + "scrollbars=yes,resizable=yes");
+      hMsgBox.document.write(
+            "<title>" + title + "</title>"
+            + "<body bgcolor=#cccccc style='overflow-x:hidden' onblur0='window.focus();'>"
+            + "<pre style='font-size:9pt'>"
+            + msg
+            + "</pre>"
+            + "<!--br><br><input type=button value=Close onclick='window.close()'-->"
+        );
+      return hMsgBox;
+    }
+  //-->
+  </script>
+
+  <script language=javascript>
+  <!--
+  /*--Menu management--*/
+    // MenuOver
+    function selectMenu(parent) {
+      var child = document.all(parent.childID);
+      var selectedChildMenuObj = document.body.selectedChildMenuObj;
+      var selectedMenuObj = document.body.selectedMenuObj;
+      if (! isObj(selectedChildMenuObj) ) {  // TypeName(selectedChildMenuObj)=="HTMLTable"
+       parent.style.borderColor="";
+       parent.style.borderStyle="outset";
+      } else {
+        if (selectedMenuObj == parent) {
+          parent.style.borderColor="";
+          parent.style.borderStyle="inset";
+        } else {
+          hideMenu();
+          showChildMenu(parent);
+        }
+      }
+    }
+    // MenuOut
+    function unselectMenu(menu) {
+      if (! isObj(document.body.selectedChildMenuObj) ) {
+        menu.style.borderColor="Menu";
+        menu.style.borderStyle="solid";
+      }
+    }
+    // SubMenuOver
+    function selectMenuItem(selectedItem) {
+      var selectedMenuObj = document.body.selectedMenuObj;
+      selectedItem.className="submenuover";
+      if ( isObj(selectedMenuObj) ) {
+        selectedMenuObj.style.borderColor="";
+        selectedMenuObj.style.borderStyle="inset";
+      }
+    }
+    // SubMenuOut
+    function unselectMenuItem(selectedItem) {
+      selectedItem.className="submenuout";
+    }
+
+    function hideMenu() {
+      var selectedChildMenuObj = document.body.selectedChildMenuObj;
+      var selectedMenuObj = document.body.selectedMenuObj;
+      if ( isObj(selectedChildMenuObj) ) {
+        selectedChildMenuObj.style.display="none";
+        document.body.selectedChildMenuObj = null;
+        if ( isObj(selectedMenuObj) ) {
+          selectedMenuObj.style.borderColor="Menu";
+          selectedMenuObj.style.borderStyle="solid";
+        }
+      }
+    }
+    // ShowSubMenu
+    function showChildMenu(parent) {
+      var child = document.all(parent.childID);
+      if ( child.style.display=="block" ) {
+        parent.style.borderColor="";
+        parent.style.borderStyle="outset";
+        child.style.display="none";
+        document.body.selectedChildMenuObj = null;
+      } else {
+        parent.style.borderColor="";
+        parent.style.borderStyle="inset";
+        child.style.display="block";
+        document.body.selectedChildMenuObj = child;
+      }
+      document.body.selectedMenuObj = parent;
+    }
+  //-->
+  </script>
+
+
+  <STYLE>
+    #v\:* {behavior:url(#default#VML);}
+    body  {
+      font-family: Tahoma; font-size: 8pt; font-weight: bold;
+    }
+    .textbox {
+      color: #000099;
+      font-family: fixedsys,verdana; font-size: 10pt; font-weight: normal;
+    }
+
+    .menu, .submenu {
+      position:absolute; top:0; left:0; left-margin: 0; top-margin: 0; right-margin: 0;
+      background-color:Menu; color:MenuText; border:0;
+      xfont-family:Arial; xfont-size:8pt; font:menu; padding:0;
+      FILTER: progid:DXImageTransform.Microsoft.Alpha(style=0,opacity=90);
+    }
+    .menu td, .submenu td {
+      border:"2px solid"; border-color:Menu; padding:0;
+      left-margin: 0; top-margin: 0; right-margin: 0; bottom-margin: 0
+      padding-left:5; padding-right:5;
+    }
+    .submenu {top:20; border:"2px outset";}
+    .submenuover {background-color:highlight;color:highlighttext;}
+    .submenuout {background-color:Menu;color:MenuText;}
+  </STYLE>
+
+</HEAD>
+
+<BODY oncontextmenu="javascript:return(showMyContextMenu());"
+ selectedMenuObj="" selectedChildMenuObj=""
+ onscroll0="scrollMenu()" onresize="javascript:if(useGrid)resizeGrid()"
+ onclick="javascript:if(window.event.srcElement.tagName=='BODY')hideMenu()"
+ onKeyDown="keypressed()" onbeforeunload0="javascript:return('Exit?')">
+ <script language=javascript>
+ <!--
+   function showMyContextMenu() {
+     var menu = document.all.MyContextMenu;
+     hideMenu();
+     if ( window.event.srcElement.tagName=='TEXTAREA'
+       || window.event.srcElement.tagName=='INPUT'
+       || document.selection.createRange().text!=""
+     ) return(true);
+     menu.style.top = window.event.clientY;
+     menu.style.left = window.event.clientX;
+     menu.style.display = "block";
+     document.body.selectedChildMenuObj = menu;
+     return(false);
+   }
+
+   function scrollMenu() {
+     menudiv.top = document.body.scrollTop;
+     //menudiv.left = document.body.scrollLeft;
+   }
+ //-->
+ </script>
+
+ <TABLE ID=MyContextMenu class=submenu style="display:none">
+  <TR><TD onmouseover='selectMenuItem(this)' onmouseout='unselectMenuItem(this)'
+    onclick='window.location.reload()'> Refresh</TD></TR>
+  <TR><TD><HR width='100%'></TD></TR>
+  <TR><TD onmouseover='selectMenuItem(this)' onmouseout='unselectMenuItem(this)'
+    onclick="hideMenu()"> Exit Menu</TD></TR>
+ </TABLE>
+
+ <DIV id=menudiv style="display:block;height:1;width:120%">
+  <TABLE id=MenuTable class=menu>
+   <TR>
+    <TD onclick='showChildMenu(this)' onmouseover='selectMenu(this)' onmouseout='unselectMenu(this)'
+      childID='MyHelpMenu'> Help </TD>
+    <TD onclick="hideMenu()" align=right width=70% border=2 nowrap>
+     &nbsp; &nbsp; &nbsp; 
+     <span id="clock" style="background-color:white;text-color:black"></span>
+     <script language=javascript>
+       function showclock() {
+         var now = new Date();
+         document.all.clock.innerHTML = " &nbsp; " + now.toLocaleString() + " &nbsp; ";
+       }
+       document.all.clock.intervalID = window.setInterval("showclock()",1000)
+     </script>
+    </TD>
+    <TD onclick="hideMenu()" width=30% border=2></TD>
+   </TR>
+  </TABLE>
+ </DIV>
+  <TABLE ID=MyHelpMenu class=submenu style="left:0;display:none;"><TR>
+    <span id=help style='display:none'>
+      ADO-HTA SQLTool 2.0<br>
+      All Rights Reserved <br>
+      Copyright &copy; 2005,2006,2007 Lai KamLeong <br><br>
+      <!--No help available yet;under construction ;=)-->
+<PRE>
+
+  F1    - Help
+  F2    - Commit
+  F3    - Open file
+  F4    - Rollback
+  F5/F8 - Execute Query
+  F12   - Show Schema/Catalog Info
+
+</PRE>
+    </span>
+    <TR><TD onmouseover='selectMenuItem(this)' onmouseout='unselectMenuItem(this)'
+      onclick='hideMenu();msgwindow("", document.all.help.innerHTML);'> Help</TD></TR>
+    <TR><TD onmouseover='selectMenuItem(this)' onmouseout='unselectMenuItem(this)'
+      onclick="runcmdln('C:\\oracle\\_err\\oerr.pl.bat',false);"> Oracle Error Codes</TD></TR>
+    <TR><TD onmouseover='selectMenuItem(this)' onmouseout='unselectMenuItem(this)'
+      onclick='vbscript:hideMenu:CreateObject("MSComDlg.CommonDialog").AboutBox'> About</TD></TR>
+  </TABLE>
+
+ <br>
+ <script>
+   header("SQL2");
+ </script>
+
+  <center>
+
+  <h3>SQLTool<br>
+    <script language=javascript for=sql event=onkeydown>
+    <!--
+      // http://www.csun.edu/cod/conf/2005/proceedings/2524.htm
+      // For best browser compatibility use the onkeydown event. 
+      // The onkeypress event only supports alphanumeric events (no arrows) in IE
+      var  keycode;
+      if (window.event) keycode = window.event.keyCode;
+      if (keycode==119 || keycode==120 ) { // F8[119] F9[120]
+        window.event.ReturnValue = false;
+        rs = runQuery(sql.value);
+        dumpRs(rs);
+      } else {
+      }
+    //-->
+    </script>
+    <textarea id=sql class=textbox cols=72 rows=6>select * from [基礎部件] where [字形]='口'</textarea>
+    <A class=href onmouseover='javascript:sql.rows++;resizeGrid();'>+</A>
+    <A class=href onclick='javascript:sql.rows=6;resizeGrid();'>/</A>
+    <A class=href onmouseover='javascript:if(sql.rows>1)sql.rows--;resizeGrid();'>-</A>
+  <br><br>
+    <input type=button value="Ref"
+      onclick='runcmdln("explorer D:\\admint~1\\sql\\reference", false)'>
+    &nbsp; &nbsp;
+    <input type=button value="ODBC"
+      onclick='runcmdln("odbcad32.exe", false)'>
+    &nbsp; &nbsp;
+    <input type=button value="Disconnect" onclick="disconnectDB(cn)">
+    &nbsp; &nbsp;
+    <script language=javascript>
+    <!--
+      function executeF5() {
+        var sqltxt;
+        sqltxt = document.selection.createRange().text;
+        if (sqltxt=="") { sqltxt = sql.value };
+        try { rs.close } catch(e) {};
+        rs = runQuery(sqltxt);
+        dumpRs(rs);
+      }
+    //-->
+    </script>
+    <input type=button value="Execute [F5]" onclick='executeF5()'>
+    &nbsp; &nbsp;
+    <input type=button value="ADO Catalog" onclick='rs=getCatalogRs();dumpRs(rs);'>
+  <br><br>
+  <font style='font-weight:300; font-size:8pt'>
+   [ <A class=href onclick="switchOutput()">html/grid</A> ]
+   [ <A class=href onclick="switchAutoFit()">auto-fit</A> ]
+   <span id=result_header></span>
+  </font>
+  <DIV id=result_div style="display:none;width:100%;height:220;overflow:scroll;
+    border-style:groove;border-width:1;" >&nbsp;</DIV>
+
+  <!--load the license file-->
+  <OBJECT CLASSID = "clsid:5220cb21-c88d-11cf-b347-00aa00a28331">
+   <PARAM NAME="LPKPath" VALUE="D:\admin tools\OWC10\lpktool/owc10chart.lpk">
+   <!--This path may be a relative path but must not refer to a UNC share 
+       or a URL on another domain.-->
+  </OBJECT>
+  <object id=result_grid classid=CLSID:0002E551-0000-0000-C000-000000000046 
+   xx=OWC10.Spreadsheet style="margin:0;width:100%;height:100%">
+   <param name=AutoFit value=true>
+   <param name=MaxWidth value="98%">
+   <param name=MaxHeight value="46%">
+   <param name=EnableResize value=false>
+   <param name=DisplayToolbar value=false>
+   <param name=DisplayColumnHeadings value=true>
+   <param name=DisplayWorkbookTabs value=false>
+   <!-- this acts as placeholder when the object fails -->
+   <script language=javascript>
+     result_div.style.display = "block";
+     useGrid = false;
+   </script>
+  </object>
+  <script language=javascript>
+    if (useGrid) {
+      result_grid.ActiveSheet.Cells.Font.Size = 8;
+    }
+  </script>
+
+  <TABLE class=table0 id=adoRsTab0 datasrc="#adoRs">
+    <TR><TD><SPAN DATAFLD=userid></SPAN></TD></TR>
+  </TABLE>
+
+  <SCRIPT LANGUAGE="VBScript">
+  <!--
+    sql.focus
+    set cn = connectDB2()
+  ''-->
+  </SCRIPT>
+
+</BODY>
+</HTML>

@@ -1,0 +1,36 @@
+<HTML>
+<HEAD>
+  <META http-equiv=Content-Type content="text/html; charset=utf-8">
+  <LINK REL=stylesheet HREF="styles.css" TYPE="text/css"/>
+  <SCRIPT LANGUAGE=JavaScript>/*make javascript as default*/</SCRIPT>
+  <SCRIPT LANGUAGE=VBScript SRC="global.vbs"></SCRIPT>
+</HEAD>
+<BODY style='margin:0'>
+<script>
+  function listChar(radic) {
+    window.parent.document.all.chrlist.src = 'chrlist.htm?radical=' + radic;
+  }
+</script>
+<TABLE BORDER=0 CELLSPACING=3 CELLPADDING=0 style='margin:0;padding:0;border:0'>
+ <SCRIPT RUNAT=SERVER LANGUAGE=VBScript>
+   set cn = connectDB()
+   set rs = runQuery(cn, "select * from radicals order by strokes, radical")
+   i = 0
+   while not rs.EOF
+     i = i + 1
+     if i > 12 or lastStrokes<>rs("strokes") then
+       i = 1
+       Response.Write "<TR><TD align=right>"
+       if lastStrokes<>rs("strokes") then Response.Write rs("strokes")
+     end if
+     Response.Write "<TD><TD><A style='cursor:hand;text-decoration:none' "
+     Response.Write " title='" & rs("seq") & "' "
+     if not IsNull(rs("parent")) then Response.Write " style='color:gray' "
+     Response.Write " onclick=listChar('" & nvl(rs("parent"),rs("radical")) & "')>" & rs("radical") & "</A>"
+     lastStrokes = rs("strokes")
+     rs.MoveNext
+   wend
+ </SCRIPT>
+</TABLE>
+</BODY>
+</HTML>

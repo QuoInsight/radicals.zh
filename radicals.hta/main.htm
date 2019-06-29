@@ -1,0 +1,120 @@
+<HTML>
+<HEAD>
+  <META http-equiv=Content-Type content="text/html; charset=utf-8">
+  <LINK REL=stylesheet HREF="styles.css" TYPE="text/css"/>
+  <SCRIPT LANGUAGE=JavaScript>/*make javascript as default*/</SCRIPT>
+  <SCRIPT LANGUAGE=VBScript SRC="global.vbs"></SCRIPT>
+  <SCRIPT LANGUAGE=VBScript SRC="header.vbs"></SCRIPT>
+</HEAD>
+<BODY STYLE='margin:0'>
+ <script LANGUAGE=VBScript>
+  Call header("")
+ </script>
+
+<DIV STYLE='margin:10'>
+
+<br>
+
+<small>
+ Random: <span id=randChar style='color:navy;font-family:DFKai-SB;font-size:20pt'></span>
+  &nbsp; <input id=randHex type=text size=4 onchange='showRandChar(parseInt(this.value,16));'>
+</small>
+<script>
+  function char2unicode(c) {
+    var c1=c.charCodeAt(0), c2=c.charCodeAt(1);
+    // c2==undefined except for "astral characters" which are represented by 2 virtual characters
+    if (c1>=0xD800 && c1<=0xDBFF && c2>=0xDC00 && c2<=0xDFFF) {
+      // UTF16 Surrogate Pair !! http://en.wikipedia.org/wiki/Mapping_of_Unicode_characters#Surrogates
+      return 0x10000 + (c1-0xD800)*0x0400 + (c2-0xDC00);
+    } else {
+      return c1;
+    }
+  }
+
+  function unicode2char(codepoint) {
+    var c, c1, c2;
+    c = codepoint;
+    if (c < 65536) {
+      return String.fromCharCode(c);
+    } else if (c <= 2097151) {         // astral character
+      c  = c - 0x10000;                // subtract 0x10000 from the code point, leaving a 20 bit number [0..0xFFFFF]
+      c1 = 0xD800 + (c >> 10);         // high/lead surrogate == top 10 bits + 0xD800
+      c2 = 0xDC00 + (c & 0x3FF);       // low/trail surrogate == low 10 bits + 0xDC00
+      return String.fromCharCode(c1) + String.fromCharCode(c2);  // surrogate pair [UTF16]
+    } else {
+      // invalid unicode
+      return;
+    }
+  }
+
+  function showRandChar(val) {
+    document.all.randChar.innerHTML = unicode2char(val);
+    document.all.randHex.value = val.toString(16).toUpperCase();
+  }
+
+  var rnd0_9 = Math.floor(Math.random()*10);
+  var rnd20901 = Math.floor(Math.random()*20901);
+  showRandChar(parseInt('4E00',16)+rnd20901);
+</script>
+<input type=button value="-" onclick="showRandChar(parseInt(document.all.randHex.value,16)-1)">
+<input type=button value="+" onclick="showRandChar(parseInt(document.all.randHex.value,16)+1)">
+&nbsp; &nbsp;
+<input type=submit value=refresh onclick="window.location.reload()">
+
+<hr>
+
+<small>
+ [http://www.unicode.org/charts/]  http://unicode.org/charts/PDF/U4E00.pdf <br>
+ The first 20,902 [U+4E00 &rarr; U+9FA5] CJK characters are arranged 
+ according to the Kangxi Dictionary. 以部首為主、先繁後簡、筆劃為輔
+ <br><br>
+<pre style='margin:0;font-family:courier;font-size:5pt'>
+http://en.wikipedia.org/wiki/Summary_of_Unicode_character_assignments
+1: Unified CJK Support Blocks
+ 1.1: CJK Radicals Supplement             U+2E80 &rarr; U+2EFF   (   128)
+ 1.2: Ideographic Description Characters  U+2FF0 &rarr; U+2FFF   (    16|12)
+ 1.3: CJK Strokes                         U+31C0 &rarr; U+31EF   (    48)
+ 1.4: CJK Symbols and Punctuation         U+3000 &rarr; U+303F   (    64)
+2: Unified Han Ideographs
+ 2.1: CJK Unified Ideographs Extension A  U+3400 &rarr; U+4DBF   ( 6,592|6,582)
+ <font color=blue style='font-family:courier;font-size:5pt'>2.2: CJK Unified Ideographs             [U+4E00 &rarr; U+9FFF]  (20,992|20,902)</font>
+ 2.3: CJK Unified Ideographs Extension B  U+20000 &rarr; U+2A6DF (42,720|42,711)
+ 2.4: CJK Extension C * (v5.2.0 Oct-2009) U+2A700 &rarr; U+2B73F ( 4,160|4,149)
+ 2.5: CJK Extension D * (v6.0.0 OCt-2010) U+2B740 &rarr; U+2B81F (   224|222)
+3: Unallocated Unihan
+ 3.1: U+2A6E0 &rarr; U+2F7FF (20,768)  3.2: U+A4D0 &rarr; U+A6FF  (560)  3.3: U+A830 &rarr; U+A83F (16)
+ 3.4:  U+A880 &rarr; U+ABFF  (   896)  3.5: U+D7B0 &rarr; U+D7FF  ( 80)
+</pre>
+</small>
+<hr>
+<pre style='font-family:courier;font-size:8pt'>
+传统的中文铅字字号的规格 [国际规格 1 point＝0.35146 mm ≈ 0.35mm 1英寸＝72pt; 1pc(派)=1/6in(英寸)=我国新四号铅字的尺寸]
+1958年6月10日，文化部出版事业管理局为了统一活字的标准，公布了《关于活字及字模规格化的决定（草案）》... 字号由老五号铅字改为新五号铅字，字号变小了
+<b>字号　　pt          (mm)</b>
+八行    72
+大特    63          (           ,22.142)
+特号    54          (           ,18.979)
+初号    42          (14.7 ,14.82,14.761)
+小初    36          (12.6 ,12.70,12.653)
+大一    31.5        (           ,11.071)
+一号    27.5, 26    ( 9.63, 9.17,      )
+小一    24          ( 8.5 , 8.47, 9.841)
+二号    22          ( 7.35, 7.76, 7.381)
+小二    18          ( 6.36, 6.35, 6.326)
+三号    15.75, 16   ( 5.62, 5.64, 5.623)
+小三    15          (     , 5.29,      ) 正文
+四号    13.75, 14   ( 4.81, 4.94, 4.920) 正文 ==> 老四号(4.81mm)
+小四    12          ( 4.2 , 4.32, 4.218) 正文 ==> 新四号
+五号    10.5        ( 3.67, 3.70, 3.690) 报刊正文 == 老五号
+小五     9          ( 3.15, 3.18, 3.163) 报刊正文 == 新五号
+六号     7.5, 8     ( 2.8 , 2.65, 2.812)
+小六     6.5, 6.875 ( 2.46, 2.29, 2.416)
+七号     5.25       ( 1.84,     , 1.845)
+八号     4.5        (           , 1.581)
+每页13-15行，每行35-42个字 ==> 455-630 [200页 ~ 9.1-12.6万字]
+</pre>
+<hr>
+</DIV>
+
+</BODY>
+</HTML>

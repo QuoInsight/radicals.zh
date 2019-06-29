@@ -1,0 +1,29 @@
+<HTML>
+<HEAD>
+  <LINK REL=stylesheet HREF="styles.css" TYPE="text/css"/>
+  <SCRIPT LANGUAGE=JavaScript>/*make javascript as default*/</SCRIPT>
+  <SCRIPT LANGUAGE=VBScript SRC="global.vbs"></SCRIPT>
+</HEAD>
+<BODY>
+  [<A class=href onclick='window.location.reload()'>Reload</A>]
+  <script>
+    //var fso = new ActiveXObject("Scripting.FileSystemObject");
+    var cn = connectDB();
+    Response.Write(
+      getConnectionInfo(cn)
+    );
+    document.write("<br><br>");
+
+    document.write(window.location.href);
+    document.write("<br>");
+    document.write(Session("SessionID"));
+    document.write("<br>");
+    document.write("window.parent.frames.length = " + window.parent.frames.length);
+    document.write("<br>");
+    //document.write("window.parent.frames[\"head\"].name = " + window.parent.frames["head"].name);
+    window.parent.frames(1).navigate('main.htm');
+  </script>
+  <br>
+  [<A class=href onclick="runcmdln('notepad.exe _index.htm', false)">edit parent</A>]
+</BODY>
+</HTML>

@@ -1,0 +1,212 @@
+<html>
+<!--
+  All Rights Reserved
+  Copyright (C) 2005 Lai KamLeong
+-->
+<HEAD>
+  <META http-equiv=Content-Type content="text/html; charset=utf-8">
+  <TITLE>SQLTool</TITLE>
+  <LINK REL=stylesheet HREF="styles.css" TYPE="text/css"/>
+
+  <SCRIPT LANGUAGE="JavaScript">/*make javascript as default*/</SCRIPT>
+  <SCRIPT LANGUAGE=JavaScript>/*make javascript as default*/</SCRIPT>
+  <SCRIPT LANGUAGE=VBScript SRC="global.vbs"></SCRIPT>
+  <SCRIPT LANGUAGE=VBScript SRC="header.vbs"></SCRIPT>
+</HEAD>
+<BODY>
+<script>
+  header("indic");
+</script>
+<script> 
+<!--
+  function showChar(c) {
+    var i, h;
+    document.all.char.value = c;
+ 
+    if (c == undefined) {
+      document.all.charVal.value = "";
+      document.all.charHex.value = "";
+      return true;
+    }
+ 
+    i = c.charCodeAt(0);
+    document.all.charVal.value = i;
+ 
+    h = i.toString(16).toUpperCase();
+    for (i=h.length; i<4; i++) {
+      h = "0" + h;
+    }
+    document.all.charHex.value = h;
+ 
+    document.all.charTrans.value = dvngr2Roman[c];
+  }
+ 
+  function dumpHash(hash) {
+    var txt="";
+    for (var i in hash) {
+      txt += i + "=" + hash[i] + "\n";
+    }
+    return txt;
+  }
+ 
+  function dumpChar(val, count) {
+    var i, txt="";
+    for (i=val; i<val+count; i++) {
+      txt += (i) + "=" + String.fromCharCode(i) + "\n";
+    }
+    return txt;
+  }
+//-->
+</script>
+<small>
+  Devanagari : U+0900 &rarr; U+097F [http://unicode.org/charts/]
+  <br>
+  http://en.wikipedia.org/wiki/Summary_of_Unicode_character_assignments
+</small>
+<table>
+<tr>
+ <td>char
+ <td>charcode
+ <td>hex
+ <td>trans
+<tr>
+ <td><input type=text maxlength=1 size=1 value="ा" id=char
+      onchange="showChar(this.value)">
+ <td><input type=text id=charVal size=8
+      onchange="showChar(String.fromCharCode(this.value))">
+ <td><input type=text id=charHex size=8
+      onchange="showChar(String.fromCharCode(parseInt(this.value,16)))">
+ <td><input type=text id=charTrans size=8
+      onchange="showChar(roman2Dvngr[this.value])">
+ <td><input type=button value=dumpAllTrans 
+      onclick="document.all.roman.value=dumpHash(roman2Dvngr)">
+</table>
+<script> 
+<!--
+  var diacritic = {
+    "M":"ṃ", "H":"ḥ",
+    "A":"ā", "I":"ī", "U":"ū",   "E":"ê", "O":"ô",
+    "R":"ṛ", "L":"ḷ",
+    "G":"ṅ", "J":"ñ",
+    "T":"ṭ", "D":"ḍ", "N":"ṇ",
+    "z":"ś", "S":"ṣ"
+  }
+
+  var diacriticA = {
+    "M":"Ṃ", "H":"Ḥ",
+    "A":"Ā", "I":"Ī", "U":"Ū",   "E":"Ē", "O":"Ō ",
+    "R":"Ṛ", "L":"Ḷ ",
+    "G":"Ṅ", "J":"Ñ",
+    "T":"Ṭ", "D":"Ḍ", "N":"Ṇ",
+    "z":"Ś", "S":"Ṣ"
+  }
+
+  var dvngr2Roman = {
+    /*2306 U+0902*/ "ं":"ṃ","ः":"ḥ",
+    /*2309 U+0905*/ "अ":"a","आ":"ā","इ":"i","ई":"ī","उ":"u","ऊ":"ū",
+    /*2315 U+090B*/ "ऋ":"ṛ","ऌ":"ḷ",
+    /*2317 U+090D*/ "ऍ":"ê","ऎ":"e","ए":"e","ऐ":"ai",
+    /*2321 U+0911*/ "ऑ":"ô","ऒ":"o","ओ":"o","औ":"au",
+    /*2325 U+0915*/ "क":"ka","ख":"kha","ग":"ga","घ":"gha","ङ":"ṅa",
+    /*2330 U+091A*/ "च":"ca","छ":"cha","ज":"ja","झ":"jha","ञ":"ña",
+    /*2335 U+091F*/ "ट":"ṭa","ठ":"ṭha","ड":"ḍa","ढ":"ḍha","ण":"ṇa",
+    /*2340 U+0924*/ "त":"ta","थ": "tha","द":"da","ध":"dha","न":"na","ऩ":"ṉa",
+    /*2346 U+092A*/ "प":"pa","फ":"pha","ब":"ba","भ":"bha","म":"ma",
+    /*2351 U+092F*/ "य":"ya","र":"ra","ल":"la","व":"va","ळ":"ḷa",
+    /*2358 U+0936*/ "श":"śa","ष":"ṣa","स":"sa","ह":"ha",
+    /*2366 U+093E*/ "ा":"ā","ि":"i","ी":"ī","ु":"u","ू":"ū",
+    /*2371 U+0943*/ "ृ":"ṛ","ॄ":"ṝ",
+    /*2373 U+0945*/ "ॅ":"ê","ॆ":"e","े":"e","ै":"ai",
+    /*2377 U+0949*/ "ॉ":"ô","ॊ":"o","ो":"o","ौ":"au",
+    /*2381 U+094D*/ "्":"·",
+    /*2384 U+0950*/ "ॐ":"oṃ",
+    /*2404 U+0964*/ "।":"|","॥":"||",
+    /*2406 U+0966*/ "०":"0","१":"1","२":"2","३":"3","४":"4",
+    /*2411 U+096B*/ "५":"5","६":"6","७":"7","८":"8","९":"9",
+    /*2416 U+0970*/ "॰":"."
+  };
+ 
+  var jpn2Roman = {
+    /*12353 U+3041*/ "ぁ":"a","あ":"A","ぃ":"i","い":"I","ぅ":"u","う":"U","ぇ":"e","え":"E","ぉ":"o","お":"O",
+                     "か":"ka","が":"ga","き":"ki","ぎ":"gi","く":"ku","ぐ":"gu","け":"ke","げ":"ge","こ":"ko","ご":"go",
+                     "さ":"sa","ざ":"za","し":"si","じ":"zi","す":"su","ず":"zu","せ":"se","ぜ":"ze","そ":"so","ぞ":"zo",
+                     "た":"ta","だ":"da","ち":"ti","ぢ":"di","っ":"tu","つ":"tu","づ":"du","て":"te","で":"de","と":"to","ど":"do",
+                     "な":"na","に":"ni","ぬ":"nu","ね":"ne","の":"no",
+                     "は":"ha","ば":"ba","ぱ":"pa","ひ":"hi","び":"bi","ぴ":"pi","ふ":"hu","ぶ":"bu","ぷ":"pu","へ":"he","べ":"be","ぺ":"pe","ほ":"ho","ぼ":"bo","ぽ":"po",
+                     "ま":"ma","み":"mi","む":"mu","め":"me","も":"mo",
+                     "ゃ":"ya","や":"ya","ゅ":"yu","ゆ":"yu","ょ":"yo","よ":"yo",
+                     "ら":"ra","り":"ri","る":"ru","れ":"re","ろ":"ro",
+                     "ゎ":"wa","わ":"wa","ゐ":"wi","ゑ":"we","を":"wo","ん":"n",
+    /*12449 U+30A1*/ "ァ":"a","ア":"A","ィ":"i","イ":"I","ゥ":"u","ウ":"U","ェ":"e","エ":"E","ォ":"o","オ":"O"
+  }
+ 
+  var roman2Dvngr = new Array();
+  for (var c in dvngr2Roman) {
+    roman2Dvngr[dvngr2Roman[c]] = c;
+  }
+ 
+  function transliterate(txt) {
+    var r, c, i, t;
+    r = document.all.roman;
+    r.value = "";
+    for (i=0; i<txt.length; i++) {
+      c = txt.charAt(i);
+      if (c.charCodeAt(0) == 13) {
+        /*skip*/
+      } else if (c >= String.fromCharCode(2305) && c <= String.fromCharCode(2416)) {
+        t = dvngr2Roman[c];
+        if (t == undefined) {
+          r.value += "[&#" + c.charCodeAt(0) + ";]";
+        } else if (c >= "ा" && c <= "्") {
+          r.value = r.value.substring(0, r.value.length-1) + t;
+        } else {
+          r.value += t;
+        }
+      } else if (c >= String.fromCharCode(12353) && c <= String.fromCharCode(12542)) {
+        t = jpn2Roman[c];
+        if (t == undefined) {
+          r.value += "[&#" + c.charCodeAt(0) + ";]";
+        } else {
+          r.value += t;
+        }
+      } else {
+        t = diacritic[c];
+        r.value += (t==undefined) ? c : t;
+      }
+    }
+  }
+  function toggleAuto(textbox, auto) {
+    textbox.onchange = (auto) ? function(){transliterate(this.value)} : "";
+    textbox.onkeyup = textbox.onchange;
+    if (auto) {
+      transliterate(textbox.value);
+    }
+  }
+//-->
+</script>
+<table>
+<tr>
+ <td>
+  <textarea id=devanagari rows=10 cols=40 style="width:342px"
+   onchange="javascript:transliterate(this.value)"
+  >[M H R L  A I U E O  G J T D N z S]
+[Ṃ Ḥ Ṛ Ḷ  Ā Ī Ū Ē Ō  Ṅ Ñ Ṭ Ḍ Ṇ Ś Ṣ]
+नमो तस्स भगवतो अरहतो सम्मासम्बुद्धस्स॥</textarea>
+ <td>
+  <textarea id=roman rows=10 cols=40 style="width:342px;font-family:tahoma"
+  ></textarea>
+<tr>
+ <td>
+  <input type=button id=go_transliterate value="transliterate"
+   onclick="transliterate(document.all.devanagari.value);">
+  <input type=checkbox id=auto_transliterate
+   onclick="toggleAuto(document.all.devanagari, this.checked)"
+  >Auto [onchange/onkeyup]
+ <script>document.all.auto_transliterate.click();</script>
+</table>
+<br>See also:
+  [<A target="_blank" href='http://www.codewallah.com/diCrunch/diCrunch.php'>diCrunch by mAdhavAnanda</A>]
+  [<A target="_blank" href='http://en.wikipedia.org/wiki/Transliteration'>wikipedia</A>]
+  [<A target="_blank" href='http://en.wikipedia.org/wiki/International_Alphabet_of_Sanskrit_Transliteration'>IAST</A>]
+</BODY>
+</HTML>

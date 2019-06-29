@@ -1,0 +1,21 @@
+<html xmlns:v="urn:schemas-microsoft-com:vml">
+<HEAD>
+  <HTA:APPLICATION
+    ApplicationName="htaApp" SingleInstance="no" navigable="yes"
+    caption="yes" icon="rss.ico" 
+    border="thick" borderStyle="normal" innerBorder="yes"
+    showInTaskbar="yes" windowState="normal" sysMenu="yes" maximizeButton="yes" minimizeButton="yes"
+    scroll="auto" scrollFlat="yes" />
+  <script language=vbscript>
+    Dim WshShell, ProcEnv
+    Set ProcEnv = CreateObject("WScript.Shell").Environment("PROCESS")
+      ProcEnv("ORACLE_HOME") = "C:\oracle\ora92"
+      ProcEnv("PATH") = ProcEnv("ORACLE_HOME") & "\bin;" & ProcEnv("PATH")
+      ProcEnv("TNS_ADMIN") = ProcEnv("ORACLE_HOME") & "\network\ADMIN"
+  </script>
+</HEAD>
+<FRAMESET style='margin:0'>
+  <noframes>this is a HTA wrapper</noframes>
+  <frame name=head src="_index.htm" scrolling0=no>
+</FRAMESET>
+</html>
